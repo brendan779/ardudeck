@@ -11,6 +11,7 @@ import { setupModuleIpc } from './modules/module-ipc.js';
 import { registerTileCacheScheme, setupTileCacheProtocol, setupTileCacheHandlers } from './tile-cache.js';
 import { registerModuleSchemePrivileges, setupModuleProtocol } from './modules/module-protocol.js';
 import { initWindowManager, restoreDetachedWindows, setupWindowManagerIpc } from './window-manager.js';
+import { setupVideoIpcHandlers, shutdownVideo } from './video/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -141,6 +142,7 @@ app.whenReady().then(() => {
   setupIpcHandlers(mainWindow);
   setupModuleIpc(mainWindow);
   setupTileCacheHandlers(mainWindow);
+  setupVideoIpcHandlers(mainWindow);
 
   // Restore any detached windows the user had open last time.
   // Defer until after the main window is ready so the renderer has subscribed
@@ -173,6 +175,7 @@ app.on('before-quit', async (event) => {
   event.preventDefault();
 
   try {
+    shutdownVideo();
     await cleanupOnShutdown();
   } catch (err) {
     console.error('[App] Cleanup error:', err);

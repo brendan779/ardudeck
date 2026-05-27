@@ -116,6 +116,7 @@
       "resources/bin/**/*",
       "resources/firmware/**/*",
       "resources/sitl/**/*",
+      "resources/go2rtc/**/*",
       "**/*.node"
     ],
     "icon": "resources/icon",

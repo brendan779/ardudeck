@@ -20,6 +20,9 @@ export { AltitudeProfilePanel } from '../mission/AltitudeProfilePanel';
 export { SitlEnvironmentDockPanel } from './SitlEnvironmentDockPanel';
 export { SitlFailureDockPanel } from './SitlFailureDockPanel';
 
+// FPV
+export { VideoFeedPanel } from './VideoFeedPanel';
+
 // Panel registry for dockview
 export const PANEL_COMPONENTS = {
   // Telemetry panels
@@ -42,6 +45,8 @@ export const PANEL_COMPONENTS = {
   // SITL simulation panels (only shown when SITL is running)
   sitlEnvironment: { component: 'SitlEnvironmentDockPanel', title: 'SITL Environment' },
   sitlFailures: { component: 'SitlFailureDockPanel', title: 'SITL Failures' },
+  // FPV
+  videoFeed: { component: 'VideoFeedPanel', title: 'Video Feed' },
 } as const;
 
 export type PanelId = keyof typeof PANEL_COMPONENTS;

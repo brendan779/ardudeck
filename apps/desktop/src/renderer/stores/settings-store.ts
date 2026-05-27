@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import type { TelemetrySpeed, BoardStats, PersistedSurveyPreset } from '../../shared/ipc-channels.js';
+import type { TelemetrySpeed, BoardStats, PersistedSurveyPreset, VideoSource, FpvLayoutState, FpvWidgetPlacement } from '../../shared/ipc-channels.js';
 import type { FirmwareSource } from '../../shared/firmware-types.js';
 
 /**
@@ -328,6 +328,19 @@ interface SettingsStore {
   removeSurveyPreset: (id: string) => void;
   setLastSurveyPresetId: (id: string | null) => void;
   setSurveySavedConfig: (config: Record<string, unknown> | null) => void;
+
+  // FPV video sources (drives the go2rtc sidecar)
+  videoSources: VideoSource[];
+  addVideoSource: (source: VideoSource) => void;
+  updateVideoSource: (id: string, updates: Partial<VideoSource>) => void;
+  removeVideoSource: (id: string) => void;
+
+  // FPV free-form canvas layout — overrides Dockview when the FPV preset
+  // is active. Sparse map keyed by widget id (see fpv-widgets-catalog.tsx);
+  // any id missing here falls back to the catalog default.
+  fpvLayout: FpvLayoutState;
+  setFpvWidgetPlacement: (widgetId: string, placement: Partial<FpvWidgetPlacement>) => void;
+  resetFpvLayout: () => void;
 
   // Computed
   getActiveVehicle: () => VehicleProfile | null;
@@ -750,6 +763,35 @@ export const useSettingsStore = create<SettingsStore>()(
     set({ surveySavedConfig: config });
   },
 
+  videoSources: [] as VideoSource[],
+  addVideoSource: (source) => {
+    set((s) => ({ videoSources: [...s.videoSources, source] }));
+  },
+  updateVideoSource: (id, updates) => {
+    set((s) => ({
+      videoSources: s.videoSources.map((v) => (v.id === id ? { ...v, ...updates } : v)),
+    }));
+  },
+  removeVideoSource: (id) => {
+    set((s) => ({ videoSources: s.videoSources.filter((v) => v.id !== id) }));
+  },
+
+  fpvLayout: { widgets: {} } as FpvLayoutState,
+  setFpvWidgetPlacement: (widgetId, placement) => {
+    set((s) => {
+      const existing = s.fpvLayout.widgets[widgetId] ?? { x: 0, y: 0, w: 200, h: 150, visible: true };
+      return {
+        fpvLayout: {
+          ...s.fpvLayout,
+          widgets: { ...s.fpvLayout.widgets, [widgetId]: { ...existing, ...placement } },
+        },
+      };
+    });
+  },
+  resetFpvLayout: () => {
+    set({ fpvLayout: { widgets: {} } });
+  },
+
   // Computed
   getActiveVehicle: () => {
     const { vehicles, activeVehicleId } = get();
@@ -829,6 +871,8 @@ export const useSettingsStore = create<SettingsStore>()(
           surveyPresets: (settings.surveyPresets ?? []) as PersistedSurveyPreset[],
           lastSurveyPresetId: settings.lastSurveyPresetId ?? null,
           surveySavedConfig: (settings.surveySavedConfig as Record<string, unknown> | undefined) ?? null,
+          videoSources: (settings.videoSources ?? []) as VideoSource[],
+          fpvLayout: (settings.fpvLayout ?? { widgets: {} }) as FpvLayoutState,
           _isInitialized: true,
         });
       } else {
@@ -868,6 +912,8 @@ export const useSettingsStore = create<SettingsStore>()(
         surveyPresets: state.surveyPresets,
         ...(state.lastSurveyPresetId ? { lastSurveyPresetId: state.lastSurveyPresetId } : {}),
         ...(state.surveySavedConfig ? { surveySavedConfig: state.surveySavedConfig } : {}),
+        videoSources: state.videoSources,
+        fpvLayout: state.fpvLayout,
       };
       await window.electronAPI?.saveSettings(payload);
     } catch (error) {
@@ -1171,6 +1217,8 @@ useSettingsStore.subscribe(
     surveyPresets: state.surveyPresets,
     lastSurveyPresetId: state.lastSurveyPresetId,
     surveySavedConfig: state.surveySavedConfig,
+    videoSources: state.videoSources,
+    fpvLayout: state.fpvLayout,
   }),
   (curr, prev) => {
     // Only save if initialized and something changed
@@ -1197,7 +1245,9 @@ useSettingsStore.subscribe(
         curr.aiWarningDismissed !== prev.aiWarningDismissed ||
         curr.surveyPresets !== prev.surveyPresets ||
         curr.lastSurveyPresetId !== prev.lastSurveyPresetId ||
-        curr.surveySavedConfig !== prev.surveySavedConfig
+        curr.surveySavedConfig !== prev.surveySavedConfig ||
+        curr.videoSources !== prev.videoSources ||
+        curr.fpvLayout !== prev.fpvLayout
       ) {
         debouncedSave();
       }

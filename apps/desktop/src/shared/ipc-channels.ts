@@ -562,6 +562,15 @@ export const IPC_CHANNELS = {
   OVERLAY_GET_API_KEY: 'overlay:get-api-key',
   OVERLAY_SET_API_KEY: 'overlay:set-api-key',
 
+  // Video sidecar (go2rtc → WebRTC/WHEP for the FPV panel)
+  VIDEO_START: 'video:start',
+  VIDEO_STOP: 'video:stop',
+  VIDEO_STATUS: 'video:status',
+  VIDEO_STDOUT: 'video:stdout',
+  VIDEO_STDERR: 'video:stderr',
+  VIDEO_ERROR: 'video:error',
+  VIDEO_EXIT: 'video:exit',
+
   // Log download & diagnostics
   LOG_LIST_REQUEST: 'log:list-request',
   LOG_LIST_ITEM: 'log:list-item',
@@ -898,6 +907,10 @@ export interface SettingsStoreSchema {
    * renderer-only survey types.
    */
   surveySavedConfig?: Record<string, unknown>;
+  /** Configured FPV video sources for the go2rtc sidecar. */
+  videoSources?: VideoSource[];
+  /** Per-widget placement for the free-form FPV canvas layout. */
+  fpvLayout?: FpvLayoutState;
 }
 
 // =============================================================================
@@ -1272,6 +1285,66 @@ export interface ArduPilotFrameCatalog {
   source: 'fresh' | 'cached' | 'fallback';
   fetchedAt?: string;
   error?: string;
+}
+
+// =============================================================================
+// Video Sidecar Types (go2rtc → WebRTC/WHEP)
+// =============================================================================
+
+/**
+ * One configured video source. `udp-rtp` listens for raw H.264 RTP on the
+ * given UDP port (QGC / Mission Planner / Cosmostreamer / Herelink / Skydroid
+ * convention). `rtsp` pulls from a URL.
+ */
+export interface VideoSource {
+  id: string;
+  name: string;
+  type: 'udp-rtp' | 'rtsp' | 'capture-card';
+  /** UDP port for `udp-rtp` sources. Defaults to 5600 if omitted. */
+  port?: number;
+  /** Source URL for `rtsp` sources. */
+  url?: string;
+  /**
+   * `MediaDeviceInfo.deviceId` for `capture-card` sources. Resolved by
+   * `navigator.mediaDevices.getUserMedia` in the renderer — go2rtc is
+   * not involved at all for this source type.
+   */
+  deviceId?: string;
+  /** Human-readable device label captured when the user picked it. */
+  deviceLabel?: string;
+}
+
+export interface VideoSidecarStatus {
+  isRunning: boolean;
+  pid?: number;
+  apiPort: number;
+  sources: VideoSource[];
+  configPath?: string;
+}
+
+export interface VideoExitData {
+  code: number | null;
+  signal: string | null;
+}
+
+/**
+ * Persisted FPV canvas state — free-form widget placement that replaces
+ * Dockview when the FPV layout is active. Stored in SettingsStoreSchema.
+ */
+export interface FpvWidgetPlacement {
+  /** Top-left position in canvas units (the canvas viewport is virtual; widgets
+   *  are absolute-positioned within it). */
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  /** Hide without losing position. Toggled from the canvas "Add widget" menu. */
+  visible: boolean;
+}
+
+export interface FpvLayoutState {
+  /** Map of widgetId (matches FPV widget catalog) → placement. */
+  widgets: Record<string, FpvWidgetPlacement>;
 }
 
 // =============================================================================

@@ -41,10 +41,13 @@ import {
   // SITL simulation panels
   SitlEnvironmentDockPanel,
   SitlFailureDockPanel,
+  // FPV
+  VideoFeedPanel,
   PANEL_COMPONENTS,
 } from '../panels';
 import { useArduPilotSitlStore } from '../../stores/ardupilot-sitl-store';
 import type { IDockviewHeaderActionsProps } from 'dockview-react';
+import { FpvCanvas } from './FpvCanvas';
 
 // Panel component wrapper for dockview. Plain — no decoration. The pop-out
 // affordance lives in dockview's header action slot (see PanelPopoutAction
@@ -133,6 +136,8 @@ const components: Record<string, React.FC<IDockviewPanelProps>> = {
   // SITL simulation panels
   SitlEnvironmentDockPanel: () => <PanelWrapper component={SitlEnvironmentDockPanel} />,
   SitlFailureDockPanel: () => <PanelWrapper component={SitlFailureDockPanel} />,
+  // FPV
+  VideoFeedPanel: () => <PanelWrapper component={VideoFeedPanel} />,
 };
 
 // Preset layout definitions (pilotView is the default)
@@ -141,6 +146,7 @@ const PRESET_LAYOUTS = {
   missionTelemetry: 'Mission Telemetry',
   sitl: 'SITL',
   allPanels: 'All Panels',
+  fpv: 'FPV',
 } as const;
 
 // The default preset to load when no saved layout exists
@@ -427,7 +433,10 @@ function createDefaultLayout(api: DockviewApi): void {
   });
 }
 
-// Load a preset layout by name
+// Load a preset layout by name. FPV is intentionally a no-op here — it
+// renders FpvCanvas instead of DockviewReact, so there's no dockview state
+// to load. Call sites still hit this on every layout change; the no-op just
+// avoids touching the (likely-being-unmounted) dockview instance.
 function loadPresetLayout(api: DockviewApi, preset: PresetLayoutKey): void {
   switch (preset) {
     case 'pilotView':
@@ -442,8 +451,10 @@ function loadPresetLayout(api: DockviewApi, preset: PresetLayoutKey): void {
     case 'allPanels':
       api.fromJSON(ALL_PANELS_LAYOUT);
       break;
+    case 'fpv':
+      // Owned by FpvCanvas — see TelemetryDashboard render.
+      break;
     default:
-      // Default to Pilot View
       api.fromJSON(PILOT_VIEW_LAYOUT);
       break;
   }
@@ -868,8 +879,20 @@ export function TelemetryDashboard() {
   }, [saveLayout, setActiveLayout]);
 
   const handleLoadLayout = useCallback(async (name: string) => {
-    if (!apiRef.current) return;
+    // Always commit the selection first — gating on apiRef.current was the
+    // bug that made FPV a one-way trap: when FPV is active Dockview is
+    // unmounted (apiRef is null), so the old early-return swallowed every
+    // dropdown change. Now the state change drives the re-render; if we're
+    // mounting Dockview, onReady handles the layout load.
     await setActiveLayout(name);
+
+    // FPV renders its own canvas (FpvCanvas) — no Dockview ops needed.
+    if (name === 'fpv') return;
+
+    // Going to a Dockview layout but the api isn't mounted yet (e.g. we
+    // were just in FPV). onReady will load whatever activeLayoutName has
+    // become as soon as DockviewReact comes back up.
+    if (!apiRef.current) return;
 
     // Check if it's a preset layout
     if (isPresetLayout(name)) {
@@ -979,15 +1002,20 @@ export function TelemetryDashboard() {
         isSitlRunning={isSitlRunning}
       />
 
-      {/* Dockview container */}
-      <div className="flex-1">
-        <DockviewReact
-          components={components}
-          onReady={onReady}
-          theme={resolvedTheme === 'light' ? themeLight : themeDark}
-          rightHeaderActionsComponent={PanelHeaderActions}
-          className="h-full"
-        />
+      {/* Dashboard area. FPV is its own free-form canvas (Skyline-style);
+          all other layouts use Dockview. */}
+      <div className="flex-1 relative">
+        {activeLayoutName === 'fpv' ? (
+          <FpvCanvas />
+        ) : (
+          <DockviewReact
+            components={components}
+            onReady={onReady}
+            theme={resolvedTheme === 'light' ? themeLight : themeDark}
+            rightHeaderActionsComponent={PanelHeaderActions}
+            className="h-full relative"
+          />
+        )}
       </div>
     </div>
   );

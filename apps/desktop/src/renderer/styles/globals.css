@@ -891,3 +891,17 @@ select,
   stroke-linecap: round;
 }
 
+/* ====================================================================
+ * Skyline HUD font — Barlow Condensed, matches the Skyline overlay app.
+ * Used by all the redesigned panel widgets via the `.font-hud` class or
+ * `font-family: 'Barlow Condensed', ...` directly inside SVG <text>.
+ * ==================================================================== */
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&display=swap');
+
+.font-hud {
+  font-family: 'Barlow Condensed', 'Inter', system-ui, sans-serif;
+}
+
+/* FPV mode no longer uses Dockview — see FpvCanvas / DraggableFpvWidget.
+ * The old .fpv-mode dockview-chrome overrides have been removed. */
+

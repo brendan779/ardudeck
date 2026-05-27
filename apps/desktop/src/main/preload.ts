@@ -4,7 +4,7 @@
  */
 
 import { contextBridge, ipcRenderer } from 'electron';
-import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type SettingsStoreSchema, type MSPConnectOptions, type MSPConnectionState, type MSPTelemetryData, type SitlConfig, type SitlStatus, type SitlExitData, type VirtualRCState, type ArduPilotSitlConfig, type ArduPilotSitlStatus, type ArduPilotSitlExitData, type ArduPilotSitlDownloadProgress, type ArduPilotSitlBinaryInfo, type ArduPilotFrameCatalog, type ArduPilotVehicleType, type ArduPilotReleaseTrack, type AppUpdateInfo, type SigningStatus, type TelemetrySpeed, type StatusMessage, type TileCacheStats, type TileCacheDownloadProgress, type TileCacheSettings, type TileCacheDownloadRegion, type CompanionConnectOptions, type CompanionConnectionIpcState, type CompanionDiscoveryResult } from '../shared/ipc-channels.js';
+import { IPC_CHANNELS, type ConnectOptions, type ConnectionState, type ConsoleLogEntry, type SavedLayout, type SettingsStoreSchema, type MSPConnectOptions, type MSPConnectionState, type MSPTelemetryData, type SitlConfig, type SitlStatus, type SitlExitData, type VirtualRCState, type ArduPilotSitlConfig, type ArduPilotSitlStatus, type ArduPilotSitlExitData, type ArduPilotSitlDownloadProgress, type ArduPilotSitlBinaryInfo, type ArduPilotFrameCatalog, type ArduPilotVehicleType, type ArduPilotReleaseTrack, type AppUpdateInfo, type SigningStatus, type TelemetrySpeed, type StatusMessage, type TileCacheStats, type TileCacheDownloadProgress, type TileCacheSettings, type TileCacheDownloadRegion, type CompanionConnectOptions, type CompanionConnectionIpcState, type CompanionDiscoveryResult, type VideoSource, type VideoSidecarStatus, type VideoExitData } from '../shared/ipc-channels.js';
 import type { DetachedWindowInfo, OpenDetachedRequest } from '../shared/window-types.js';
 import type { SystemInfo, NetworkInfo, MetricsData, ProcessInfo, LogEntry, FileEntry, ServiceInfo, ServiceAction, ContainerInfo, ContainerAction, ExtensionInfo } from '@ardudeck/companion-types';
 import type { InstalledModule, ModuleProgress, UpdateAvailable } from '../shared/module-types.js';
@@ -1337,6 +1337,43 @@ const api = {
     const handler = (_: unknown, progress: ArduPilotSitlDownloadProgress) => callback(progress);
     ipcRenderer.on(IPC_CHANNELS.ARDUPILOT_SITL_DOWNLOAD_PROGRESS, handler);
     return () => ipcRenderer.removeListener(IPC_CHANNELS.ARDUPILOT_SITL_DOWNLOAD_PROGRESS, handler);
+  },
+
+  // ============================================================================
+  // Video sidecar (go2rtc → WebRTC/WHEP for the FPV panel)
+  // ============================================================================
+
+  videoStart: (sources: VideoSource[]): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.VIDEO_START, sources),
+
+  videoStop: (): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.VIDEO_STOP),
+
+  videoGetStatus: (): Promise<VideoSidecarStatus> =>
+    ipcRenderer.invoke(IPC_CHANNELS.VIDEO_STATUS),
+
+  onVideoStdout: (callback: (data: string) => void) => {
+    const handler = (_: unknown, data: string) => callback(data);
+    ipcRenderer.on(IPC_CHANNELS.VIDEO_STDOUT, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.VIDEO_STDOUT, handler);
+  },
+
+  onVideoStderr: (callback: (data: string) => void) => {
+    const handler = (_: unknown, data: string) => callback(data);
+    ipcRenderer.on(IPC_CHANNELS.VIDEO_STDERR, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.VIDEO_STDERR, handler);
+  },
+
+  onVideoError: (callback: (error: string) => void) => {
+    const handler = (_: unknown, error: string) => callback(error);
+    ipcRenderer.on(IPC_CHANNELS.VIDEO_ERROR, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.VIDEO_ERROR, handler);
+  },
+
+  onVideoExit: (callback: (data: VideoExitData) => void) => {
+    const handler = (_: unknown, data: VideoExitData) => callback(data);
+    ipcRenderer.on(IPC_CHANNELS.VIDEO_EXIT, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.VIDEO_EXIT, handler);
   },
 
   // ============================================================================

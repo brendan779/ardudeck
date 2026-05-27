@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { TileCacheCard } from './TileCacheCard';
+import { VideoSourcesSettings } from './VideoSourcesSettings';
 import { useSettingsStore, type VehicleProfile, type VehicleType, type DisplayUnits, type ExperienceLevel, type UiVisibility } from '../../stores/settings-store';
 import { useParameterStore } from '../../stores/parameter-store';
 import { useTelemetryStore } from '../../stores/telemetry-store';
@@ -1652,6 +1653,17 @@ export function SettingsView() {
             <h2 className="text-sm font-medium text-content uppercase tracking-wider">Offline Maps</h2>
           </div>
           <TileCacheCard />
+        </div>
+
+        {/* ============================================ */}
+        {/* SECTION: FPV Video */}
+        {/* ============================================ */}
+        <div className="mt-8 mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-1.5 h-5 bg-emerald-500 rounded-full" />
+            <h2 className="text-sm font-medium text-content uppercase tracking-wider">FPV Video</h2>
+          </div>
+          <VideoSourcesSettings />
         </div>
 
         {/* ============================================ */}
